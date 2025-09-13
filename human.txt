@@ -1,0 +1,14 @@
+Quick Start:
+
+python setup.py
+python run_live_monitor.py
+
+
+Manual Start:
+
+streamlit run enhanced_live_ids.py
+
+
+Windows Users:
+
+Double-click start_monitor.bat

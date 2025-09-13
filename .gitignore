@@ -1,0 +1,13 @@
+.human.txt
+
+__pycache__/
+
+*.pkl
+
+*.log
+
+venv/
+
+.env
+
+.DS_Store
