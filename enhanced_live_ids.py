@@ -246,23 +246,19 @@ class NetworkFlowAnalyzer:
                 if flow_text:
                     result = self.analyze_flow(flow_text)
                     if result:
-                        # Add to flow data for display
-                        flow_info = {
-                            'flow_key': f"{self.flows[flow_key]['src_ip']} ↔ {self.flows[flow_key]['dst_ip']}",
-                            'protocol': self.flows[flow_key]['protocol'],
-                            'duration': flow_duration,
-                            'packet_count': len(self.flows[flow_key]['packets']),
-                            'result': result
+                        # --- MODIFICATION: Send flow result to main thread via queue (SAFE) ---
+                        flow_result_payload = {
+                            'type': 'flow_result',
+                            'flow_info': {
+                                'flow_key': f"{self.flows[flow_key]['src_ip']} ↔ {self.flows[flow_key]['dst_ip']}",
+                                'protocol': self.flows[flow_key]['protocol'],
+                                'duration': flow_duration,
+                                'packet_count': len(self.flows[flow_key]['packets']),
+                                'result': result
+                            }
                         }
-                        st.session_state.flow_data.append(flow_info)
-                        
-                        # Update statistics
-                        st.session_state.stats['total_flows'] += 1
-                        if result['prediction'] == 1:
-                            st.session_state.stats['attacks_detected'] += 1
-                            st.session_state.attack_alerts.append(flow_info)
-                        else:
-                            st.session_state.stats['benign_flows'] += 1
+                        st.session_state.packet_queue.put(flow_result_payload)
+                        # --- END MODIFICATION ---
                 
                 # Remove completed flow
                 del self.flows[flow_key]
@@ -301,14 +297,21 @@ def start_live_capture(interface, packet_count, analyzer):
                 break
                 
             analyzer.process_packet(packet)
-            st.session_state.stats['total_packets'] += 1
+            # st.session_state.stats['total_packets'] += 1 # REMOVED: Direct state access
+            
+            # --- MODIFICATION: Send packet increment command to the main thread (SAFE) ---
+            try:
+                st.session_state.packet_queue.put({'type': 'packet_increment'})
+            except:
+                pass # Ignore queue errors in thread
             
             # Update progress
             if i % 10 == 0:
                 try:
-                    st.session_state.packet_queue.put(f"Processed {i} packets...")
+                    st.session_state.packet_queue.put({'type': 'message', 'text': f"Processed {i} packets..."})
                 except:
                     pass  # Ignore queue errors in thread
+            # --- END MODIFICATION ---
                 
     except Exception as e:
         logger.error(f"Live capture failed: {str(e)}")
@@ -406,7 +409,7 @@ with col3:
     st.metric("Flows Analyzed", st.session_state.stats['total_flows'])
 with col4:
     st.metric("Attacks Detected", st.session_state.stats['attacks_detected'], 
-              delta=f"+{len([a for a in st.session_state.attack_alerts if (datetime.now() - a['result']['timestamp']).seconds < 60])} in last minute" if st.session_state.attack_alerts else None)
+                delta=f"+{len([a for a in st.session_state.attack_alerts if (datetime.now() - a['result']['timestamp']).seconds < 60])} in last minute" if st.session_state.attack_alerts else None)
 with col5:
     st.metric("Benign Flows", st.session_state.stats['benign_flows'])
 
@@ -428,10 +431,37 @@ if st.session_state.monitoring_active:
     # Show monitoring status
     st.success(f"🔴 Live monitoring active on {interface}")
     
-    # Process queue messages
+    # --- MODIFICATION: Process queue messages safely in the main thread ---
     while not st.session_state.packet_queue.empty():
-        message = st.session_state.packet_queue.get_nowait()
-        st.info(message)
+        item = st.session_state.packet_queue.get_nowait()
+
+        if isinstance(item, dict):
+            item_type = item.get('type')
+            
+            if item_type == 'packet_increment':
+                st.session_state.stats['total_packets'] += 1
+                
+            elif item_type == 'flow_result':
+                flow_info = item['flow_info']
+                result = flow_info['result']
+                
+                # Perform all flow state updates safely in the main thread
+                st.session_state.flow_data.append(flow_info)
+                st.session_state.stats['total_flows'] += 1
+                
+                if result['prediction'] == 1: # ATTACK
+                    st.session_state.stats['attacks_detected'] += 1
+                    st.session_state.attack_alerts.append(flow_info)
+                else: # BENIGN
+                    st.session_state.stats['benign_flows'] += 1
+                
+            elif item_type == 'message':
+                st.info(item['text'])
+                
+        # Fallback for old message format (simple strings)
+        elif isinstance(item, str):
+            st.info(item)
+    # --- END MODIFICATION ---
 
 # === Real-time Visualizations ===
 if st.session_state.flow_data:
@@ -457,7 +487,7 @@ if st.session_state.flow_data:
         rows=2, cols=2,
         subplot_titles=('Attack Detection Over Time', 'Confidence Levels', 'Flow Duration Distribution', 'Protocol Distribution'),
         specs=[[{"secondary_y": True}, {"secondary_y": False}],
-               [{"secondary_y": False}, {"secondary_y": False}]]
+                [{"secondary_y": False}, {"secondary_y": False}]]
     )
     
     # Attack detection timeline
@@ -469,12 +499,12 @@ if st.session_state.flow_data:
     
     fig.add_trace(
         go.Scatter(x=attack_timeline['timestamp'], y=attack_timeline['attacks'], 
-                  name='Attacks', line=dict(color='red', width=2)),
+                    name='Attacks', line=dict(color='red', width=2)),
         row=1, col=1
     )
     fig.add_trace(
         go.Scatter(x=attack_timeline['timestamp'], y=attack_timeline['total'], 
-                  name='Total Flows', line=dict(color='blue', width=1)),
+                    name='Total Flows', line=dict(color='blue', width=1)),
         row=1, col=1, secondary_y=True
     )
     
@@ -496,7 +526,7 @@ if st.session_state.flow_data:
     protocol_counts = flow_df['protocol'].value_counts()
     fig.add_trace(
         go.Pie(labels=protocol_counts.index, values=protocol_counts.values, 
-               name='Protocols'),
+                name='Protocols'),
         row=2, col=2
     )
     
@@ -509,7 +539,7 @@ if st.session_state.attack_alerts:
     
     # Show recent attacks
     recent_attacks = [alert for alert in st.session_state.attack_alerts 
-                     if (datetime.now() - alert['result']['timestamp']).seconds < 300]  # Last 5 minutes
+                        if (datetime.now() - alert['result']['timestamp']).seconds < 300]  # Last 5 minutes
     
     for i, attack in enumerate(recent_attacks[-10:]):  # Show last 10 attacks
         severity_color = "🔴" if attack['result']['severity'] == "HIGH" else "🟡" if attack['result']['severity'] == "MEDIUM" else "🟢"
@@ -557,8 +587,8 @@ if y_test is not None and y_pred is not None:
         cm = confusion_matrix(y_test, y_pred)
         fig, ax = plt.subplots(figsize=(8, 6))
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax,
-                   xticklabels=['Benign', 'Attack'],
-                   yticklabels=['Benign', 'Attack'])
+                    xticklabels=['Benign', 'Attack'],
+                    yticklabels=['Benign', 'Attack'])
         ax.set_xlabel("Predicted")
         ax.set_ylabel("Actual")
         ax.set_title("Model Confusion Matrix")
@@ -575,3 +605,10 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+# === Real-time Rerun Mechanism ===
+# Force the app to rerun periodically to fetch updates from the background thread
+if st.session_state.monitoring_active:
+    import time
+    time.sleep(1) # Wait for 1 second
+    st.rerun()    # Rerun the entire script
