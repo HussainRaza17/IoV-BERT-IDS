@@ -1,0 +1,10 @@
+[
+  {
+    "id": "alert_1",
+    "timestamp": "2025-11-17T13:05:36.182280",
+    "flow_key": "192.168.1.200 \u2194 10.0.0.1",
+    "prediction": "ATTACK",
+    "confidence": 95.2,
+    "severity": "HIGH"
+  }
+]

@@ -90,9 +90,19 @@ def check_wireshark_installation():
     print("\n🔍 Checking Wireshark installation...")
     
     try:
-        import pyshark
-        # Try to create a capture to test Wireshark
-        capture = pyshark.LiveCapture(interface='Wi-Fi')
+        import importlib.util
+        import importlib
+        # Check if pyshark is available without causing a static import error
+        spec = importlib.util.find_spec("pyshark")
+        if spec is None:
+            raise ImportError("pyshark not found")
+        pyshark = importlib.import_module("pyshark")
+        # Try to create a capture to test Wireshark (fallback to default interface)
+        try:
+            capture = pyshark.LiveCapture(interface='Wi-Fi')
+        except Exception:
+            capture = pyshark.LiveCapture()
+        # If object created, assume pyshark + Wireshark are available
         print("✅ Wireshark is properly installed and configured")
         return True
     except ImportError:

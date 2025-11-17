@@ -12,6 +12,13 @@ import json
 import pickle
 from pathlib import Path
 
+try:
+    import pyshark
+except ImportError:
+    pyshark = None
+    logger_init = logging.getLogger(__name__)
+    logger_init.warning("pyshark is not installed. Please install it using 'pip install pyshark'")
+
 logger = logging.getLogger(__name__)
 
 class DataProcessor:
@@ -352,27 +359,21 @@ class DataExporter:
             export_stats['start_time'] = export_stats['start_time'].isoformat()
         if 'last_reset' in export_stats and export_stats['last_reset']:
             export_stats['last_reset'] = export_stats['last_reset'].isoformat()
-        
-        with open(filepath, 'w') as f:
-            json.dump(export_stats, f, indent=2)
-        
-        logger.info(f"Exported statistics to {filepath}")
-        return str(filepath)
-
 def validate_network_interface(interface: str) -> bool:
     """Validate if network interface is available"""
+    if pyshark is None:
+        return False
     try:
-        import pyshark
         # Try to create a live capture to test interface
         capture = pyshark.LiveCapture(interface=interface)
         return True
     except Exception:
         return False
-
 def get_available_interfaces() -> List[str]:
     """Get list of available network interfaces"""
+    if pyshark is None:
+        return ['Wi-Fi', 'Ethernet']  # Fallback
     try:
-        import pyshark
         # This is a simplified approach - in practice, you might want to use
         # platform-specific methods to get interface names
         common_interfaces = [
@@ -380,6 +381,14 @@ def get_available_interfaces() -> List[str]:
             'eth0', 'wlan0', 'en0', 'en1'
         ]
         
+        available = []
+        for interface in common_interfaces:
+            if validate_network_interface(interface):
+                available.append(interface)
+        
+        return available
+    except Exception:
+        return ['Wi-Fi', 'Ethernet']  # Fallback
         available = []
         for interface in common_interfaces:
             if validate_network_interface(interface):
