@@ -99,7 +99,13 @@ def check_wireshark_installation():
         pyshark = importlib.import_module("pyshark")
         # Try to create a capture to test Wireshark (fallback to default interface)
         try:
-            capture = pyshark.LiveCapture(interface='Wi-Fi')
+            INTERFACE = r"\Device\NPF_{402546C9-2D7F-4D62-B7F9-D9112B9CDE45}"
+
+            capture = pyshark.LiveCapture(
+                interface=INTERFACE,
+                use_json=True,
+                include_raw=False
+            )
         except Exception:
             capture = pyshark.LiveCapture()
         # If object created, assume pyshark + Wireshark are available

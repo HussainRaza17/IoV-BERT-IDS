@@ -8,6 +8,8 @@ import os
 import subprocess
 from pathlib import Path
 
+import pyshark
+
 def check_dependencies():
     """Check if all required dependencies are installed"""
     required_packages = [
@@ -59,10 +61,13 @@ def check_model_files():
 def check_wireshark():
     """Check if Wireshark is available"""
     try:
-        # Try to import pyshark and create a capture
-        import pyshark
-        # This will fail if Wireshark is not properly installed
-        capture = pyshark.LiveCapture(interface='Wi-Fi')
+        INTERFACE = r"\Device\NPF_{402546C9-2D7F-4D62-B7F9-D9112B9CDE45}"
+
+        capture = pyshark.LiveCapture(
+            interface=INTERFACE,
+            use_json=True,
+            include_raw=False
+        )
         return True
     except Exception as e:
         print("❌ Wireshark not properly installed or configured")

@@ -323,8 +323,7 @@ def start_live_capture(interface, packet_count, analyzer):
 # === Streamlit UI ===
 st.set_page_config(
     page_title="IoV-BERT-IDS Live Monitor", 
-    layout="wide", 
-    page_icon="🚨",
+    layout="wide",
     initial_sidebar_state="expanded"
 )
 
@@ -336,7 +335,7 @@ if model is None:
     st.stop()
 
 # === Sidebar Configuration ===
-st.sidebar.title("🔧 Configuration")
+st.sidebar.title("Configuration")
 
 # Interface selection
 interfaces = ["Wi-Fi", "Ethernet", "Local Area Connection", "Wi-Fi 2"]
@@ -362,14 +361,14 @@ with col2:
         st.rerun()
 
 # Wireshark test button
-if st.sidebar.button("🔍 Test Wireshark"):
+if st.sidebar.button("Test Wireshark"):
     with st.spinner("Testing Wireshark interface..."):
         success, message = test_wireshark_interface(interface)
         if success:
             st.sidebar.success(f"✅ {message}")
         else:
             st.sidebar.error(f"❌ {message}")
-            st.sidebar.info("💡 Try running as administrator or check interface name")
+            st.sidebar.info("Try running as administrator or check interface name")
 
 # OOD threshold
 if train_embeddings is not None:
@@ -385,12 +384,12 @@ else:
     threshold = 0.35
 
 # Alert settings
-st.sidebar.subheader("🚨 Alert Settings")
+st.sidebar.subheader("Alert Settings")
 min_confidence = st.sidebar.slider("Minimum Confidence for Alerts:", 50, 95, 80)
 show_ood_warnings = st.sidebar.checkbox("Show OOD Warnings", True)
 
 # === Main Dashboard ===
-st.title("🚨 IoV-BERT-IDS Live Network Monitor")
+st.title("IoV-BERT-IDS Live Network Monitor")
 st.markdown("Real-time network flow analysis and intrusion detection using BERT-based classification")
 
 # === Statistics Cards ===
@@ -535,7 +534,7 @@ if st.session_state.flow_data:
 
 # === Attack Alerts ===
 if st.session_state.attack_alerts:
-    st.subheader("🚨 Recent Attack Alerts")
+    st.subheader("Recent Attack Alerts")
     
     # Show recent attacks
     recent_attacks = [alert for alert in st.session_state.attack_alerts 
@@ -560,7 +559,7 @@ if st.session_state.attack_alerts:
 
 # === Flow Details Table ===
 if st.session_state.flow_data:
-    st.subheader("📋 Recent Flow Analysis")
+    st.subheader("Recent Flow Analysis")
     
     # Create a more detailed table
     display_data = []
@@ -606,9 +605,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# === Real-time Rerun Mechanism ===
-# Force the app to rerun periodically to fetch updates from the background thread
 if st.session_state.monitoring_active:
     import time
-    time.sleep(1) # Wait for 1 second
-    st.rerun()    # Rerun the entire script
+    time.sleep(1)
+    st.rerun()
