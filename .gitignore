@@ -9,6 +9,6 @@ __pycache__/
 venv/
 venv310/
 
-.env
+.env/
 
 .DS_Store
