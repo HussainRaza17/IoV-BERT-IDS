@@ -1,3 +1,0 @@
-timestamp,flow_key,protocol,duration,packet_count,prediction,confidence
-2025-11-17 19:27:48.174396,192.168.1.100 ↔ 192.168.1.1,TCP,1.5,10,BENIGN,85.5
-2025-11-17 19:27:48.174403,192.168.1.200 ↔ 10.0.0.1,UDP,0.5,5,ATTACK,95.2

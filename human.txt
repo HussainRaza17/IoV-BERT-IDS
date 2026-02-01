@@ -12,3 +12,37 @@ streamlit run enhanced_live_ids.py
 Windows Users:
 
 Double-click start_monitor.bat
+
+
+------------------------------------------------
+
+To capture Packet from phone use:
+"C:\Program Files\Wireshark\dumpcap.exe" -i <WIFI_INTERFACE_NUMBER> -w phone_hotspot.pcapng
+
+# in last change the file name
+
+To check WIFI_INTERFACE_NUMBER use 
+"C:\Program Files\Wireshark\dumpcap.exe" -D
+
+To check if it actually capture the packet from phone:
+1. open file in wireshark 
+2. search for DNS
+
+Now transfer file to DATA folder and then run 
+> change which file to scan in last of iov_feature_extract.py file 
+
+run :
+python iov_feature_extract.py
+
+it will give you: iov_features.csv  file
+
+now run:
+python iov_tokenize.py
+
+--------
+
+Now change Data file path in run_iov_bert_offline.py
+And run it:
+python run_iov_bert_offline.py
+
+Project complete
